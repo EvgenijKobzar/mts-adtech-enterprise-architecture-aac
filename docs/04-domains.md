@@ -81,3 +81,45 @@
 Доменная модель adTech МТС Stream построена по принципу **модульности и слабой связанности**.
 Каждый домен решает свой бизнес-контур, а **MasterDeal** объединяет их в единую сквозную сделку —
 формируя основу для **управляемого, SLA-контролируемого и аналитически прозрачного** рекламного цикла.
+
+
+```mermaid
+graph TD
+  %% Стили
+  classDef hub fill:#fff7ed,stroke:#f97316,stroke-width:2px,color:#7c2d12;
+  classDef domain fill:#ecfeff,stroke:#06b6d4,stroke-width:1.5px,color:#083344;
+  classDef data fill:#f5f3ff,stroke:#8b5cf6,stroke-width:1.5px,color:#2e1065;
+
+  subgraph IP[Master Deal management]
+    MD[(MasterDeal<br/>master_deal_id / stage / SLA / links)]:::hub
+  end
+
+  %% Домены
+  CRM[CRM<br/>Лиды / Сделки / КП]:::domain
+  TT[Task-Tracker<br/>Задачи / SLA]:::domain
+  MP[MediaPush<br/>Медиаплан / Кампания]:::domain
+  DOC[Docflow-ops<br/>Договоры / Подписание]:::domain
+  LEG[Legal-ops<br/>Юр.экспертиза / Риски]:::domain
+  DCM[DCM Billing<br/>Счета / УПД / Закрытие]:::domain
+  DWH[DWH / BI<br/>Факты / KPI / Дашборды]:::data
+
+  %% Связи через шину (EDA + REST)
+  CRM <--> MD
+  TT  <--> MD
+  MP  <--> MD
+  DOC <--> MD
+  LEG <--> MD
+  DCM <--> MD
+  MD  --> DWH
+
+  %% Подписи ключевых событий (пример)
+  linkStyle default stroke-width:1.5px
+  %% (подсказки как комментарии)
+   CRM --> MD 
+  %% MP  -> MD: mediaplan.ready, campaign.started
+  %% DOC -> MD: contract.signed
+  %% DCM -> MD: invoice.issued, closeout.completed
+  %% TT  -> MD: sla.breached
+  %% MD  -> DWH: masterdeal.stage.changed, masterdeal.sla.updated
+
+```
