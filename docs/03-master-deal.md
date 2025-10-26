@@ -246,16 +246,56 @@ LLM-модель получает контекст сделки в структ�
 
 ```json
 {
-  "master_deal_id": "MDL-00432",
-  "client": "KION",
+  "master_deal_id": "MDL-000234",
+  "deal_name": "KION Q4 Performance",
+  "client": { "master_client_id": "MCL-1029", "name": "KION", "industry": "Media" },
   "stage": "contracting",
-  "budget": 1200000,
-  "brief": "...",
-  "offer": "...",
-  "contract": "...",
-  "kpi": {"reach": 3.2e6, "cpm": 210.5},
-  "sla": {"lead_to_contract": "P2D", "sla_breached": false}
+  "priority": "high",
+  "opened_at": "2025-09-14T10:22:11Z",
+  "links": {
+    "crm": { "id": "CRM-8823", "url": "https://crm/deal/8823" },
+    "mediapush": { "mediaplan_id": "MP-447", "campaign_id": null },
+    "docflow": { "contract_id": "DOC-571", "status": "in_review" },
+    "dcm": { "invoice_id": null }
+  },
+  "finance": {
+    "budget_total": 1200000.00,
+    "budget_media": 950000.00,
+    "services_cost": 120000.00,
+    "revenue_planned": 1350000.00,
+    "revenue_actual": 0.00,
+    "currency": "RUB",
+    "margin_pct": 0.125
+  },
+  "sla": {
+    "lead_to_plan": "P2D06H",
+    "plan_to_contract": "P1D12H",
+    "contract_to_launch": null,
+    "sla_breached": false,
+    "breach_reasons": []
+  },
+  "roles": [
+    { "role": "sales", "user_id": "u-101", "full_name": "Иван Петров" },
+    { "role": "account", "user_id": "u-202", "full_name": "Анна Смирнова" },
+    { "role": "traffic", "user_id": "u-303", "full_name": "Денис Орлов" }
+  ],
+  "documents": [
+    { "doc_type": "offer", "doc_id": "OFF-3391", "status": "approved" },
+    { "doc_type": "contract", "doc_id": "DOC-571", "status": "in_review" }
+  ],
+  "media": [
+    { "mediaplan_id": "MP-447", "status": "ready", "placements_count": 42, "kpi": { "reach": 4.3e6, "cpm": 210.5 } }
+  ],
+  "billing": [],
+  "ai": [
+    { "kind": "next_action", "severity": 2, "summary": "Отправить договор на подписание клиенту." }
+  ],
+  "events": [
+    { "event_type": "deal.created", "source_system": "crm", "occurred_at": "2025-09-14T10:22:11Z" },
+    { "event_type": "mediaplan.ready", "source_system": "mediapush", "occurred_at": "2025-09-16T15:05:33Z" }
+  ]
 }
+
 ```
 
 Сценарии использования:
