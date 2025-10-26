@@ -139,7 +139,71 @@ MasterDeal реализует концепцию **Shared Kernel** — общи�
 
 ---
 
-## **Итог по разделу**
+## 2.5. Слоёная архитектура: SOA + EDA + DWH + MasterDeal
+
+```mermaid
+flowchart TB
+  classDef layer fill:#f8fafc,stroke:#94a3b8,stroke-width:1px,rx:6,ry:6
+  classDef core fill:#fff7ed,stroke:#f59e0b,stroke-width:2px,rx:6,ry:6
+  classDef infra fill:#ecfeff,stroke:#06b6d4,stroke-width:1px,rx:6,ry:6
+  classDef data fill:#f0fdf4,stroke:#16a34a,stroke-width:1px,rx:6,ry:6
+
+  subgraph L1["Пользователи и каналы (Apps/Portals)"]
+    UI1[CRM UI] 
+    UI2[Account UI] 
+    UI3[Traffic UI] 
+    UI4[Legal/Docflow UI]
+    
+    UI5[BI Dashboards]
+  end
+
+  subgraph L2["SOA: Домены и сервисы"]
+    CRM[CRM] 
+    MP[MediaPush] 
+    TT[Task-Tracker] 
+    DOC[Docflow] 
+    LEG[Legal] 
+    DCM[DCM/Billing]
+  end
+
+  subgraph L3["Integration Layer (ESB/API GW/Event Bus)"]
+    GW[API Gateway] 
+    BUS[Event Bus / Kafka] 
+    ROUTE[Orchestration/Routing]
+  end
+
+  subgraph L4["Operational MasterDeal Service (Meta-domain)"]
+    MD[(MasterDeal:\nID Registry - Gates - Aggregated Stage - SLA Engine - Canonical Events)]
+  end
+
+  subgraph L5["Data & Analytics (DWH/BI/AI)"]
+    DWH[(DWH / Data Lake)] 
+    BI[BI / United Stage Dashboard] 
+    LLM[LLM Service Layer]
+  end
+
+  %% Wiring
+  UI1-->CRM; UI2-->TT; UI2-->MP; UI3-->MP; UI3-->TT; UI4-->DOC; UI5-->BI
+  CRM-->GW; MP-->GW; TT-->GW; DOC-->GW; LEG-->GW; DCM-->GW
+  CRM-->BUS; MP-->BUS; TT-->BUS; DOC-->BUS; LEG-->BUS; DCM-->BUS
+
+  GW-->ROUTE-->MD
+  BUS-->MD
+  MD-->|Canonical Events|BUS
+  MD-->|Context API|GW
+
+  BUS-->DWH
+  DWH-->BI
+  GW-->LLM
+  MD-->LLM
+```
+
+
+**Смысл:** домены общаются через Integration Layer; **MasterDeal** — семантическое ядро, где вычисляется `aggregated_stage`, ведётся SLA и публикуются канонические события; **DWH/BI/LLM** получают уже согласованный контекст.
+
+---
+
+## 2.6. **Итог по разделу**
 
 **Integration Platform** обеспечивает технологическую связность,
 **DWH** — аналитическую прозрачность,
