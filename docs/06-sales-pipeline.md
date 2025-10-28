@@ -534,18 +534,144 @@ flowchart LR
 
 ---
 
-## **6.9. Итог по разделу**
+# **6.9. Как stage, gate и MasterDeal формируют сквозной Sales-Pipeline**
 
-**Sales-Pipeline adTech МТС Stream** — это цифровой сквозной процесс,
-в котором объединены все роли, домены и события.
+---
 
-**MasterDeal** обеспечивает:
+## **6.9.1. Концепция взаимосвязи**
 
-* консолидацию стадий и SLA;
-* оркестрацию бизнес-событий;
-* управление жизненным циклом сделки в реальном времени;
-* аналитику и автоматизацию принятия решений через LLM и DWH.
+**Sales-Pipeline** — это **бизнес-процесс**,
+а **MasterDeal** — его **цифровой исполнитель и координатор**.
 
-> В результате Sales-Pipeline становится **прозрачным, управляемым и самообновляемым контуром**,
-> где каждая сделка живёт в цифровом виде — от лида до постанализа —
-> под управлением MasterDeal как ядра экосистемы **adTech МТС Stream**.
+* Каждый **домен** (CRM, MediaPush, Legal, Docflow, DCM…) живёт в своём тактическом цикле — со своими статусами (`domain_stage`).
+* **MasterDeal** собирает факты из этих систем в виде **гейтов (gate predicates)**.
+* На основе выполненных гейтов вычисляется **aggregated_stage**, который является **цифровым отражением этапа Sales-Pipeline**.
+* Агрегированные стадии MasterDeal и есть **реализованный в данных Sales-Pipeline**.
+
+> другими словами:
+> **Sales-Pipeline — это бизнес-модель, а MasterDeal — её вычислительный двигатель.**
+
+---
+
+## **6.9.2. Логика выравнивания уровней**
+
+| Уровень                           | Описание                                                  | Пример                                                                | Управляется кем                         |
+| --------------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------- | --------------------------------------- |
+| **Domain stage**                  | Тактическое состояние объекта внутри домена               | CRM: “Offer approved”, MediaPush: “Plan ready”, DCM: “Invoice issued” | Доменная система                        |
+| **Gate (факт)**                   | Бизнес-факт, сигнализирующий о завершении доменного этапа | G3: `offer_approved=true`                                             | MasterDeal (через Integration Platform) |
+| **Aggregated stage (MasterDeal)** | Консолидированный статус сделки на уровне экосистемы      | “contracting”, “running”, “closing”                                   | MasterDeal Service                      |
+| **Sales-Pipeline Stage (бизнес)** | Формализованный этап в жизненном цикле клиента            | “Offer Formed”, “Contracting”, “Closing”                              | Бизнес / DWH / Dashboard                |
+
+ **Aggregated stage MasterDeal = техническая реализация Sales-Pipeline stage**
+(в 1-к-1 соответствии, но в вычислимом, событийном виде).
+
+---
+
+## **6.9.3. Карта соответствия**
+
+| Sales-Pipeline Stage (бизнес) | Aggregated Stage (MasterDeal) | Гейты, которые должны быть выполнены    | Доменные источники событий |
+| ----------------------------- | ----------------------------- | --------------------------------------- | -------------------------- |
+| Lead Imported                 | `draft`                       | —                                       | CRM                        |
+| Brief Received                | `briefed`                     | G1: has_brief                           | CRM                        |
+| Media Planning                | `planning`                    | G1=true, G2=false                       | MediaPush                  |
+| Offer Formed                  | `offer_ready`                 | G2: mediaplan_ready, G3: offer_approved | CRM, MediaPush             |
+| Contracting                   | `contracting`                 | G4: contract_signed                     | Docflow, Legal             |
+| Campaign Launching / Running  | `running`                     | G5: campaign_started                    | MediaPush                  |
+| Closing                       | `closing`                     | G6: invoice_issued                      | DCM, Docflow               |
+| Post-Analysis / Closed        | `closed`                      | G7: closeout_completed                  | DCM, DWH                   |
+
+Итого:
+Sales-Pipeline — **логическая “надстройка” над aggregated_stage**,
+а aggregated_stage — **алгоритмическая функция от гейтов** (фактов доменов).
+
+---
+
+## **6.9.4. Поток данных и событий**
+
+```mermaid
+flowchart LR
+  classDef dom fill:#e0f2fe,stroke:#0284c7,stroke-width:1px,rx:4,ry:4
+  classDef gate fill:#fef9c3,stroke:#f59e0b,stroke-width:1px,rx:4,ry:4
+  classDef agg fill:#dcfce7,stroke:#16a34a,stroke-width:2px,rx:6,ry:6
+  classDef biz fill:#f0fdf4,stroke:#10b981,stroke-width:2px,rx:6,ry:6
+
+  CRM[CRM<br/>domain_stage: Offer approved]:::dom
+  MP[MediaPush<br/>domain_stage: Mediaplan ready]:::dom
+  DOC[Docflow<br/>domain_stage: Contract signed]:::dom
+  DCM[DCM<br/>domain_stage: Invoice issued]:::dom
+
+  G2[G2: mediaplan_ready]:::gate
+  G3[G3: offer_approved]:::gate
+  G4[G4: contract_signed]:::gate
+  G6[G6: invoice_issued]:::gate
+
+  MD[(MasterDeal<br/>aggregated_stage: closing)]:::agg
+  PIPE[Sales-Pipeline<br/>Stage: Closing]:::biz
+
+  CRM --> G3
+  MP --> G2
+  DOC --> G4
+  DCM --> G6
+  G2 & G3 & G4 & G6 --> MD
+  MD --> PIPE
+```
+
+---
+
+## **6.9.5. Почему это важно**
+
+| Элемент                         | Роль в Sales-Pipeline              | Польза                                        |
+| ------------------------------- | ---------------------------------- | --------------------------------------------- |
+| **Domain stage**                | Источник фактов о выполнении работ | Гибкость внутри доменов                       |
+| **Gate**                        | Синхронизатор бизнес-фактов        | Единая логика переходов                       |
+| **MasterDeal aggregated_stage** | Унифицированный статус сделки      | Основа для SLA, отчётов и автоматизации       |
+| **Sales-Pipeline**              | Витрина для бизнеса                | Управляемость, прозрачность, прогнозируемость |
+
+---
+
+## **6.9.6. Роль Integration Platform и DWH**
+
+* **Integration Platform** → доставляет сырые события из доменов в MasterDeal, обеспечивает идемпотентность и маршрутизацию.
+* **MasterDeal** → агрегирует факты, вычисляет `aggregated_stage`, публикует канонические события.
+* **DWH / BI** → отображает `aggregated_stage` как Sales-Pipeline stage, строит отчёты и SLA-дашборды.
+
+Таким образом, MasterDeal — это **операционный “двигатель” Sales-Pipeline**,
+а DWH — его **аналитическое зеркало**.
+
+---
+
+## **6.9.7. Итог по разделу**
+
+* Каждый **stage домена** → транслируется в **гейт (факт)**.
+* Комбинация гейтов → определяет **aggregated_stage** в MasterDeal.
+* Aggregated_stage → материализуется в **Sales-Pipeline** как бизнес-этап.
+* DWH и Dashboard делают Sales-Pipeline **видимым, измеримым и управляемым**.
+
+>  **Итог:**
+> сквозной Sales-Pipeline — это бизнес-процесс,
+> **реализованный через вычислительную логику MasterDeal и его гейты**,
+> синхронизированный с доменами событиями и SLA,
+> и визуализируемый через DWH в United Stage Dashboard.
+---
+
+вот обновлённый, более чёткий **Итог по разделу**:
+
+---
+
+## **6.10. Итог по разделу**
+
+**Sales-Pipeline adTech МТС Stream** — это сквозной управляемый процесс, в котором роли и домены работают по единым правилам стадий, времени и качества.
+
+**MasterDeal** выступает операционным ядром Pipeline и обеспечивает:
+
+* **Единую картину сделки**: агрегированный `stage` и связи между доменами по `master_deal_id`.
+* **Сквозной SLA-контроль**: автоматический тайминг переходов, эскалации и прозрачные узкие места.
+* **Оркестрацию событий**: нормализацию сырых доменных событий в каноническую модель для всех потребителей.
+* **Интеграцию данных и интеллекта**: контекст для **LLM Copilot** и поток фактов в **DWH** для United Stage Dashboard.
+
+**Integration Platform** обеспечивает надёжную доставку (EDA + REST), безопасность и наблюдаемость;
+**DWH** — аналитическую истину и управленческие дашборды в реальном времени.
+
+**Бизнес-результат**: быстреее прохождение ключевых этапов (Time-to-Offer/Launch), меньше ошибок и ручной работы, выше предсказуемость и NPS.
+
+> Иными словами, Sales-Pipeline становится **прозрачным, измеримым и самообновляемым контуром**, где каждая сделка проходит путь от лида до постаналитики под управлением **MasterDeal**.
