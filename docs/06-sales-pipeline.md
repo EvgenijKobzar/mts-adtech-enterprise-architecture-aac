@@ -233,7 +233,7 @@ sequenceDiagram
 
 ---
 
-### 6.7.3 Мини-легенда (для подписи на слайде)
+### 6.7.3 Мини-легенда
 
 * **G1..G7** — гейты (факты из доменных событий): `has_brief`, `mediaplan_ready`, `offer_approved`, `contract_signed`, `campaign_started`, `invoice_issued`, `closeout_completed`.
 * **SLA-таймеры**:
