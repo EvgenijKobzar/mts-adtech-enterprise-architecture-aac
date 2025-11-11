@@ -110,4 +110,4 @@
 * **Окружения**: Dev, Stage (интеграции с CRM), Prod.
 * **Хостинг**: Kubernetes/containers, managed DB (PostgreSQL), managed message bus.
 * **Observability**: логи (ELK/Cloud), метрики (Prometheus/Grafana), трассировки (OTel).
-* **CI/CD**: ветвление Git, PR-проверки, миграции БД, blue-green/rolling.
+* **CI/CD**: ветвление Git, PR-проверки, миграции БД, blue-green.
