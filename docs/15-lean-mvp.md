@@ -107,7 +107,7 @@
 
 # 7) Инфраструктура и окружения
 
-* **Окружения**: Dev, Stage (интеграции с песочницей CRM), Prod.
-* **Хостинг**: Kubernetes/containers (или PaaS), managed DB (PostgreSQL), managed message bus.
+* **Окружения**: Dev, Stage (интеграции с CRM), Prod.
+* **Хостинг**: Kubernetes/containers, managed DB (PostgreSQL), managed message bus.
 * **Observability**: логи (ELK/Cloud), метрики (Prometheus/Grafana), трассировки (OTel).
 * **CI/CD**: ветвление Git, PR-проверки, миграции БД, blue-green/rolling.
