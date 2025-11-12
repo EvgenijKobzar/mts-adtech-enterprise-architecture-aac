@@ -1,10 +1,8 @@
 ### C4: System Context (L1)
 
-![context.png](context.png)
-
+![context.png](diagram/context.png)
 
 ---
 
 ### C4: Container (L2)
-
-![container.png](container.png)
+![container.png](diagram/container.png)
