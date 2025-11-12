@@ -1,0 +1,61 @@
+@startuml MasterDeal_Context
+' Подтянуть C4-PlantUML (контекстный уровень)
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+LAYOUT_WITH_LEGEND()
+
+' ==== Персоны ====
+Person(sales, "Sales / Pre-sales", "Работа с лидами, подготовка КП/медиапланов")
+Person(traffic, "Traffic / AdOps", "Запуск и ведение кампаний")
+Person(fin, "Finance", "Счета, акты, сверки")
+Person(am, "Account Manager", "Координация статусов, SLA, коммуникации")
+Person(sec, "Security/Audit", "Политики доступа, аудит")
+
+' ==== Система ====
+System_Boundary(md, "Master-Deal") {
+  System(masterdeal, "Master-Deal", "Единый источник истины по сделке: оркестрация стадий, каноническая модель, события")
+}
+
+' ==== Внешние системы ====
+System_Ext(crm, "CRM/SFA", "Лиды/сделки/контакты")
+System_Ext(dms, "DMS / e-Sign", "Документы, подписание")
+System_Ext(ad, "Ad Platforms (DSP/SSP/AdServer)", "Кампании, статусы запуска, перформанс")
+System_Ext(erp, "ERP/Billing", "Счета, платежи, закрывающие")
+System_Ext(dwh, "DWH/BI", "Отчёты, витрины, SLA")
+System_Ext(idm, "IDM/SSO", "Аутентификация/роли")
+System_Ext(bus, "Event Bus / ESB", "Kafka/RabbitMQ")
+System_Ext(llm, "LLM/AI Services", "Генерация КП/медиапланов, проверки качества")
+System_Ext(notif, "Notifications", "Email/SMS/Chat")
+System_Ext(extdata, "External Data", "Обогащение аккаунтов/прайсов")
+
+' ==== Взаимосвязи (персоны ↔ система) ====
+Rel(sales, masterdeal, "Создание/обновление Master-Deal, просмотр статусов")
+Rel(traffic, masterdeal, "Запросы на запуск/паузу кампаний, SLA")
+Rel(am, masterdeal, "Координация стадий, эскалации")
+Rel(fin, masterdeal, "Финстатусы сделки, акты/счета")
+Rel(sec, masterdeal, "Политики/аудит")
+
+' ==== Интеграции (системы ↔ Master-Deal) ====
+Rel(crm, masterdeal, "Лиды/сделки/стадии", "REST/Events")
+Rel(masterdeal, crm, "Обратные статусы/идентификаторы", "REST/Events")
+
+Rel(dms, masterdeal, "Подписанные документы", "API/Webhooks")
+Rel(masterdeal, dms, "Версии КП/договоров", "API")
+
+Rel(masterdeal, ad, "IO/настройки кампаний", "API")
+Rel(ad, masterdeal, "Статусы/перформанс (raw)", "Events")
+
+Rel(masterdeal, erp, "Счета/акты к оплате", "API")
+Rel(erp, masterdeal, "Платежи/сверки", "API")
+
+Rel(masterdeal, dwh, "Каноничные данные сделки, SLA, аудит", "Batch/CDC")
+Rel(idm, masterdeal, "SSO/OAuth, роли", "OIDC/SAML")
+Rel(masterdeal, notif, "Алерты/напоминания", "Webhook/SMTP")
+Rel(extdata, masterdeal, "Обогащение", "API")
+
+Rel(llm, masterdeal, "Ответы моделей", "API")
+Rel(masterdeal, llm, "Промпты/данные сделки", "API")
+
+Rel(bus, masterdeal, "Шинные события (raw/canonical)", "Kafka/RabbitMQ")
+Rel(masterdeal, bus, "Публикация/подписка событий", "Kafka/RabbitMQ")
+
+@enduml
