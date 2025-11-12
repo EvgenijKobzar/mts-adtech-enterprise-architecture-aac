@@ -585,13 +585,3 @@ classDiagram
 
   EventCanon "0..*" o-- "1" DictEventType
 ```
-
-## Пояснения и принципы логической модели
-
-* **Нормализация:** сущности разделены на агрегаты (MasterDeal), справочники (Dict*), документы (Contract/IO/Invoice), операционные детали (MediaPlanItem/IOLineItem) и телеметрию (EventRaw/EventCanon).
-* **Версионирование:** `Brief.version`, `MediaPlan.version`, `Proposal.version`; истории стадий в `DealStageHistory`.
-* **M:N связи:** через мосты `AccountContact`, `PlacementCreative`.
-* **Справочники и валидация:** `DictInventory`, `DictSpec`, `DictEventType` задают допустимые значения и схемы событий.
-* **Согласованность цепочки план-факт:** `MediaPlanItem → IOLineItem → InvoiceLine` обеспечивает трассируемость сумм и delivery.
-* **SLA:** `SLARecord` и отметки в `DealStageHistory` позволяют считать TtL и нарушения.
-* **Сырые/канонические события:** `EventRaw` хранит входящие payload’ы; `EventCanon` — нормализованные метрики, связанные с сущностями домена.
