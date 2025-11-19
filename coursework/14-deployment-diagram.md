@@ -2,113 +2,122 @@
 
 ```mermaid
 flowchart LR
-  %% ================= Внешний периметр =================
-  subgraph INTERNET[Корпоративный периметр / Интернет]
-    CRM[CRM-система]
-    AD_PLATFORMS[Платформы размещения рекламы<br/>'Ad Platforms']
-    BILLING[Биллинг / ERP]
-    DWH_BI[DWH / BI-платформа]
-    LLM[LLM-сервисы<br/>'генерация медиапланов, КП']
-  end
+%% ================= Внешний периметр =================
+subgraph INTERNET[Корпоративный периметр / Интернет]
+CRM[CRM-система<br/>1 инстанс, SaaS]
+AD_PLATFORMS[Платформы размещения рекламы<br/>множество инстансов, внешние API]
+BILLING[Биллинг / ERP<br/>1 инстанс]
+DWH_BI[DWH / BI-платформа<br/>кластер, ETL/BI]
+LLM[LLM-сервисы<br/>внешний провайдер, облако]
+end
 
-  %% ================= Корпоративное облако / ДЦ =================
-  subgraph DC[Корпоративное облако / ДЦ]
+%% ================= Корпоративное облако / ДЦ =================
+subgraph DC[Корпоративное облако / ДЦ]
 
-    %% ---- Интеграционный слой ----
-    subgraph INTEGRATION[Интеграционная платформа]
-      APIGW[API Gateway]
-      ESB[ESB / iPaaS<br/>'оркестрация, трансформации']
-      EVENTBUS[Event Bus<br/>'Kafka / RabbitMQ']
-    end
+%% ---- Интеграционный слой ----
+subgraph INTEGRATION[Интеграционная платформа]
+APIGW[API Gateway<br/>2 инстанса, Nginx/Kong]
+ESB[ESB / iPaaS<br/>2 инстанса, Java/Spring Integration]
+EVENTBUS[Event Bus<br/>3 брокера, Kafka]
+end
 
-    %% ---- Кластер приложений ----
-    subgraph APP_CLUSTER[Кластер приложений 'Kubernetes / VM']
+%% ---- Кластер приложений ----
+subgraph APP_CLUSTER[Кластер приложений Kubernetes / VM]
 
-      subgraph NS_MD[Namespace: master-deal]
-        MD_API[MasterDeal API<br/>'REST / GraphQL']
-        MD_WORKER[MasterDeal Worker<br/>'асинхронные обработки']
-      end
+subgraph NS_MD[Namespace: master-deal]
+MD_API[MasterDeal API<br/>3 pod'а, Java/Spring Boot]
+MD_WORKER[MasterDeal Worker<br/>2 pod'а, Java/Spring Boot]
+end
 
-      subgraph NS_ADAPTERS[Namespace: integration-adapters]
-        ADAPTER_CRM[Adapter CRM]
-        ADAPTER_BILL[Adapter Billing]
-        ADAPTER_AD[Adapter Ad Platforms]
-        ADAPTER_DWH[Adapter DWH/BI]
-      end
+subgraph NS_ADAPTERS[Namespace: integration-adapters]
+ADAPTER_CRM[Adapter CRM<br/>2 pod'а, Java/Spring Boot]
+ADAPTER_BILL[Adapter Billing<br/>2 pod'а, Java/Spring Boot]
+ADAPTER_AD[Adapter Ad Platforms<br/>2 pod'а, Java/Spring Boot]
+ADAPTER_DWH[Adapter DWH/BI<br/>2 pod'а, Java/Spring Boot]
+end
 
-      subgraph NS_LLM[Namespace: llm-services]
-        LLM_ORCH[LLM Orchestrator<br/>'шлюз к LLM']
-      end
+subgraph NS_LLM[Namespace: llm-services]
+LLM_ORCH[LLM Orchestrator<br/>2 pod'а, Node.js/NestJS]
+end
 
-    end
+end
 
-    %% ---- Хранилища ----
-    subgraph DB_CLUSTER[Кластер БД]
-      MD_DB[(MasterDeal Operational DB<br/>master_deal, media_plan,<br/>contract, campaign)]
-      INT_DB[(Integration DB)]
-    end
+%% ---- Хранилища ----
+subgraph DB_CLUSTER[Кластер БД]
+MD_DB[(MasterDeal Operational DB<br/>2 узла, PostgreSQL)]
+INT_DB[(Integration DB<br/>2 узла, PostgreSQL)]
+end
 
-    subgraph CACHE_CLUSTER[Кластер кэша]
-      REDIS[(Redis Cluster)]
-    end
+subgraph CACHE_CLUSTER[Кластер кэша]
+REDIS[(Redis Cluster<br/>3 узла, Redis)]
+end
 
-    %% ---- Наблюдаемость ----
-    subgraph OBS[Мониторинг и логирование]
-      METRICS[Metrics & Alerts]
-      LOGS[Централизованный логинг]
-      AUDIT[Аудит действий]
-    end
+%% ---- Наблюдаемость ----
+subgraph OBS[Мониторинг и логирование]
+METRICS[Metrics & Alerts<br/>Prometheus]
+LOGS[Централизованный логинг<br/>ELK/Loki]
+AUDIT[Аудит действий<br/>1 инстанс, Audit-service]
+end
 
-  end
+end
 
-  %% ================= Связи с внешними системами =================
-  CRM --> APIGW
-  APIGW --> CRM
+%% ================= Связи с внешними системами (в одну сторону) =================
+CRM -- "HTTPS/REST" --> APIGW
+BILLING -- "HTTPS/REST" --> APIGW
+AD_PLATFORMS -- "HTTPS/REST/Webhook" --> APIGW
+DWH_BI -- "JDBC/ETL" --> ADAPTER_DWH
+LLM_ORCH -- "HTTPS/REST" --> LLM
 
-  BILLING --> APIGW
-  APIGW --> BILLING
+%% ================= Внутренние связи (основные, однонаправленные) =================
+%% Внешние вызовы к MasterDeal
+APIGW -- "HTTPS/REST" --> MD_API
 
-  AD_PLATFORMS --> APIGW
-  APIGW --> AD_PLATFORMS
+%% Доступ к БД и кэшу
+MD_API -- "JDBC (PostgreSQL)" --> MD_DB
+MD_WORKER -- "JDBC (PostgreSQL)" --> MD_DB
 
-  DWH_BI <---> ADAPTER_DWH
+MD_API -- "JDBC (PostgreSQL)" --> INT_DB
+MD_WORKER -- "JDBC (PostgreSQL)" --> INT_DB
 
-  LLM_ORCH --> LLM
+MD_API -- "RESP/TCP" --> REDIS
+MD_WORKER -- "RESP/TCP" --> REDIS
 
-  %% ================= Внутренние связи (основные) =================
-  APIGW --> MD_API
-  MD_API --> APIGW
+%% Событийное взаимодействие (prod/consume)
+MD_API -- "Kafka (produce)" --> EVENTBUS
+MD_WORKER -- "Kafka (consume)" --> EVENTBUS
 
-  MD_API --> MD_DB
-  MD_WORKER --> MD_DB
+ADAPTER_CRM -- "HTTPS/REST, SOAP" --> ESB
+ADAPTER_BILL -- "HTTPS/REST" --> ESB
+ADAPTER_AD -- "HTTPS/REST" --> ESB
 
-  MD_API --> REDIS
-  MD_WORKER --> REDIS
+ESB -- "Kafka (produce)" --> EVENTBUS
+ADAPTER_CRM -- "Kafka (produce/consume)" --> EVENTBUS
+ADAPTER_BILL -- "Kafka (produce/consume)" --> EVENTBUS
+ADAPTER_AD -- "Kafka (produce/consume)" --> EVENTBUS
+ADAPTER_DWH -- "Kafka (produce/consume)" --> EVENTBUS
 
-  MD_API --> EVENTBUS
-  MD_WORKER --> EVENTBUS
+%% Вызов LLM через оркестратор
+MD_API -- "HTTPS/REST" --> LLM_ORCH
 
-  ADAPTER_CRM <---> ESB
-  ESB <---> CRM
+%% ================= Наблюдаемость (push-модель, тоже однонаправленно) =================
+MD_API -- "Metrics (HTTP/Prometheus)" --> METRICS
+MD_WORKER -- "Metrics (HTTP/Prometheus)" --> METRICS
+APIGW -- "Metrics (HTTP/Prometheus)" --> METRICS
+EVENTBUS -- "Metrics (HTTP/Prometheus)" --> METRICS
 
-  ADAPTER_CRM --> EVENTBUS
-  ADAPTER_BILL --> EVENTBUS
-  ADAPTER_AD --> EVENTBUS
-  ADAPTER_DWH --> EVENTBUS
+MD_API -- "Logs (TCP/HTTP)" --> LOGS
+MD_WORKER -- "Logs (TCP/HTTP)" --> LOGS
+APIGW -- "Logs (TCP/HTTP)" --> LOGS
+ESB -- "Logs (TCP/HTTP)" --> LOGS
+ADAPTER_CRM -- "Logs (TCP/HTTP)" --> LOGS
+ADAPTER_BILL -- "Logs (TCP/HTTP)" --> LOGS
+ADAPTER_AD -- "Logs (TCP/HTTP)" --> LOGS
+ADAPTER_DWH -- "Logs (TCP/HTTP)" --> LOGS
 
-  MD_API --> LLM_ORCH
+APIGW -- "Audit events (HTTPS/REST)" --> AUDIT
+MD_API -- "Audit events (HTTPS/REST)" --> AUDIT
 
-  %% ================= Наблюдаемость =================
-  MD_API --> LOGS
-  MD_WORKER --> LOGS
-  APIGW --> LOGS
 
-  MD_API --> METRICS
-  MD_WORKER --> METRICS
-  APIGW --> METRICS
-  EVENTBUS --> METRICS
-
-  APIGW --> AUDIT
 ```
 
 ### 1. Снаружи (INTERNET)
@@ -121,7 +130,7 @@ flowchart LR
 * Интеграционная платформа (INTEGRATION)
     * `API Gateway` — единая входная точка HTTP-запросов.
     * `ESB/iPaaS` — оркестрация и трансформация сообщений.
-    * `Event Bus` — шина событий (Kafka/RabbitMQ) для обмена доменными и интеграционными событиями.
+    * `Event Bus` — шина событий (Kafka) для обмена доменными и интеграционными событиями.
 
 * Кластер приложений (APP_CLUSTER)
     * `Namespace master-deal`:
